@@ -1,17 +1,27 @@
+---
+output: github_document
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
 # pipewelder
 
-**pipewelder** is an R package for streamlined retrieval and cleaning of
-economic and public health time series data from:
+**pipewelder** is an R package for streamlined retrieval and cleaning of economic and public health time series data from:
 
 - **Bureau of Labor Statistics (BLS)**
 - **Federal Reserve Economic Data (FRED)**
 - **Centers for Disease Control and Prevention (CDC)**
 
-It consolidates API interactions into consistent, high-level pipeline
-functions:
+It consolidates API interactions into consistent, high-level pipeline functions:
 
 - `get_bls()` for labor force data
 - `get_fred()` for market and macroeconomic indicators
@@ -19,10 +29,9 @@ functions:
 
 ## Installation
 
-You can install the development version of pipewelder from
-[GitHub](https://github.com/velvetvaldes/pipewelder) with:
+You can install the development version of pipewelder from [GitHub](https://github.com/velvetvaldes/pipewelder) with:
 
-``` r
+```r
 # install.packages("pak")
 pak::pak("velvetvaldes/pipewelder")
 ```
@@ -31,7 +40,7 @@ pak::pak("velvetvaldes/pipewelder")
 
 ### Retrieve labor force data from BLS
 
-``` r
+```{r bls-example, eval = FALSE}
 # Set your API key
 Sys.setenv(BLS_KEY = "your_api_key")
 
@@ -42,18 +51,18 @@ head(bls_df)
 
 ### Retrieve market data from FRED
 
-``` r
+```{r fred-example, eval = FALSE}
 fred_df <- pipewelder::get_fred("VIXCLS", "1990-01-01")
 head(fred_df)
 ```
 
 ### Retrieve health surveillance data from CDC
 
-``` r
+```{r cdc-example, eval = FALSE}
 cdc_df <- pipewelder::get_cdc()
 head(cdc_df)
 ```
 
-------------------------------------------------------------------------
+---
 
 Generated from `README.Rmd` using `devtools::build_readme()`.
