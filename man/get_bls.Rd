@@ -36,5 +36,5 @@ get_bls("LNS14000000", 2000, 2023)
 
 }
 \seealso{
-\code{\link[=split_year_range]{split_year_range()}}, \code{\link[=get_bls_series_chunks]{get_bls_series_chunks()}}, \code{\link[=merge_bls_series_chunks]{merge_bls_series_chunks()}}
+\code{split_year_range()}, \code{get_bls_series_chunks()}, \code{merge_bls_series_chunks()}
 }

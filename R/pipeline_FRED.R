@@ -7,7 +7,7 @@
 #' including `"YYYY"`, `"YYYY-MM"`, and `"YYYY-MM-DD"` with either slashes or dashes.
 #' Ensures the input is a valid date and returns it as a properly formatted character string.
 #'
-#' @seealso [get_fred_series_raw()]
+#' @seealso \code{get_fred_series_raw()}
 #'
 #' @param date_input A character string (e.g., "2024", "2024-06", "2024/06/13")
 #'   or a `Date` object to be cleaned and standardized.
@@ -15,42 +15,44 @@
 #' @return A character string in `"YYYY-MM-DD"` format.
 #'
 #' @examples
+#'
+#' \dontrun{
 #' sanitize_date("2024")
 #' sanitize_date("2024-06")
 #' sanitize_date("2024/06/13")
 #' sanitize_date(as.Date("2024-06-13"))
+#' }
 #'
 #' @keywords internal
-#' @noRd
 sanitize_date <- function(date_input) {
   # If it's already a Date, return in correct format
   if (inherits(date_input, "Date")) {
     return(format(date_input, "%Y-%m-%d"))
   }
-  
+
   if (!is.character(date_input)) {
     stop("date_input must be a character string or Date object")
   }
-  
+
   # Normalize all separators to dashes
   date_input <- gsub("/", "-", date_input)
-  
+
   # Add missing month/day defaults
   if (grepl("^\\d{4}$", date_input)) {
     date_input <- paste0(date_input, "-01-01")
   } else if (grepl("^\\d{4}-\\d{1,2}$", date_input)) {
     date_input <- paste0(date_input, "-01")
   }
-  
+
   # Validate final format
   date_parsed <- as.Date(date_input)
-  
+
   if (is.na(date_parsed)) {
     stop(
       "Invalid date format. Expected YYYY, YYYY-MM, or YYYY-MM-DD (slashes or dashes allowed)."
     )
   }
-  
+
   return(format(date_parsed, "%Y-%m-%d"))
 }
 
@@ -67,7 +69,7 @@ sanitize_date <- function(date_input) {
 #' @param end_date The end date of the series in `"YYYY"`, `"YYYY-MM"`, `"YYYY-MM-DD"` format,
 #'   or a `Date` object.
 #'
-#' @seealso [sanitize_date()], [get_fred()]
+#' @seealso \code{sanitize_date()}, \code{get_fred()}
 #'
 #' @return A named list containing the parsed JSON response from the FRED API.
 #'
@@ -83,13 +85,12 @@ sanitize_date <- function(date_input) {
 #' @importFrom httr GET content
 #' @importFrom jsonlite fromJSON
 #' @keywords internal
-#' @noRd
 get_fred_series_raw <- function(series_id, start_date, end_date) {
   api_key <- Sys.getenv("FRED_KEY")
-  
+
   start_date_clean <- sanitize_date(start_date)
   end_date_clean <- sanitize_date(end_date)
-  
+
   url <- paste0(
     "https://api.stlouisfed.org/fred/series/observations?",
     "series_id=",
@@ -102,11 +103,11 @@ get_fred_series_raw <- function(series_id, start_date, end_date) {
     "&observation_end=",
     end_date_clean
   )
-  
+
   res <- httr::GET(url)
   res_text <- httr::content(res, as = "text", encoding = "UTF-8")
   parsed <- jsonlite::fromJSON(res_text, flatten = TRUE)
-  
+
   return(parsed)
 }
 
@@ -120,7 +121,7 @@ get_fred_series_raw <- function(series_id, start_date, end_date) {
 #' @param fred_result A list returned by [get_fred_series_raw()], containing a named element `observations`
 #'   with date and value fields.
 #'
-#' @seealso [get_fred_series_raw()], [get_fred()]
+#' @seealso \code{get_fred_series_raw()}, \code{get_fred()}
 #'
 #' @return A tibble with two columns:
 #' \describe{
@@ -137,13 +138,12 @@ get_fred_series_raw <- function(series_id, start_date, end_date) {
 #' @importFrom tibble as_tibble
 #' @importFrom dplyr transmute
 #' @keywords internal
-#' @noRd
 tidy_fred_series <- function(fred_result) {
   df <- fred_result$observations
-  
+
   df <- tibble::as_tibble(df) |>
     dplyr::transmute(date = as.Date(date), value = as.numeric(value))
-  
+
   return(df)
 }
 
@@ -161,7 +161,7 @@ tidy_fred_series <- function(fred_result) {
 #'   or a `Date` object.
 #' @param end_date Optional. End date in the same format as `start_date`. Defaults to today's date.
 #'
-#' @seealso [get_fred_series_raw()], [tidy_fred_series()]
+#' @seealso \code{get_fred_series_raw()}, \code{tidy_fred_series()}
 #'
 #' @return A tibble with `date` and `value` columns, one row per observation.
 #'

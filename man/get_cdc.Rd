@@ -33,5 +33,5 @@ This function wraps the three-step process of:
 
 }
 \seealso{
-\code{\link[=collect_cdc_batches]{collect_cdc_batches()}}, \code{\link[=harmonize_flag_column]{harmonize_flag_column()}}, \code{\link[=bind_cdc_batches]{bind_cdc_batches()}}
+\code{collect_cdc_batches()}, \code{harmonize_flag_column()}, \code{bind_cdc_batches()}
 }

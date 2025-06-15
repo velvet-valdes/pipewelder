@@ -33,5 +33,5 @@ get_fred("UNRATE", "2020-01-01")
 
 }
 \seealso{
-\code{\link[=get_fred_series_raw]{get_fred_series_raw()}}, \code{\link[=tidy_fred_series]{tidy_fred_series()}}
+\code{get_fred_series_raw()}, \code{tidy_fred_series()}
 }

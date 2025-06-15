@@ -14,23 +14,26 @@
 #' @return A list of lists, each containing `start` and `end` keys representing chunk boundaries.
 #'
 #' @examples
+#'
+#' \dontrun{
 #' split_year_range(2000, 2023, chunk_size = 10)
-#' 
-#' @seealso [get_bls_series_chunks()]
+#' }
+#'
+#' @seealso \code{get_bls_series_chunks()}
 #'
 #' @keywords internal
-#' @noRd
+
 split_year_range <- function(start_year, end_year, chunk_size = 20) {
   if (start_year > end_year)
     stop("start_year must be <= end_year")
-  
+
   years <- seq(start_year, end_year)
   chunks <- split(years, ceiling(seq_along(years) / chunk_size))
-  
+
   chunk_ranges <- lapply(chunks, function(yr) {
     list(start = min(yr), end = max(yr))
   })
-  
+
   return(chunk_ranges)
 }
 
@@ -57,9 +60,8 @@ split_year_range <- function(start_year, end_year, chunk_size = 20) {
 #'
 #' @importFrom httr POST content content_type_json
 #' @importFrom jsonlite toJSON fromJSON
-#' @seealso [get_bls_series_chunks()]
+#' @seealso \code{get_bls_series_chunks()}
 #' @keywords internal
-#' @noRd
 get_bls_chunk <- function(series_id, chunk) {
   json_body <- jsonlite::toJSON(
     list(
@@ -70,17 +72,17 @@ get_bls_chunk <- function(series_id, chunk) {
     ),
     auto_unbox = TRUE
   )
-  
+
   res <- httr::POST(
     "https://api.bls.gov/publicAPI/v2/timeseries/data/",
     body = json_body,
     encode = "raw",
     httr::content_type_json()
   )
-  
+
   res_json <- httr::content(res, as = "text", encoding = "UTF-8")
   parsed <- jsonlite::fromJSON(res_json, flatten = TRUE)
-  
+
   return(parsed)
 }
 
@@ -104,13 +106,12 @@ get_bls_chunk <- function(series_id, chunk) {
 #' @importFrom dplyr mutate select
 #' @importFrom stringr str_remove
 #' @importFrom tibble as_tibble
-#' @seealso [merge_bls_series_chunks()]
+#' @seealso \code{merge_bls_series_chunks()}
 #' @keywords internal
-#' @noRd
 tidy_bls_single_result <- function(res) {
   series_df <- res[["Results"]][["series"]]
   data_df <- series_df$data[[1]]
-  
+
   cleaned_df <- dplyr::mutate(
     data_df,
     year = as.integer(year),
@@ -119,7 +120,7 @@ tidy_bls_single_result <- function(res) {
     date = as.Date(sprintf("%d-%02d-01", year, month)),
     seriesID = series_df$seriesID
   )
-  
+
   cleaned_df <- dplyr::select(cleaned_df, date, year, month, value, seriesID)
   return(tibble::as_tibble(cleaned_df))
 }
@@ -143,17 +144,16 @@ tidy_bls_single_result <- function(res) {
 #' get_bls_series_chunks("LNS14000000", chunks)
 #' }
 #'
-#' @seealso [get_bls_chunk()], [split_year_range()]
+#' @seealso \code{get_bls_chunk()}, \code{split_year_range()}
 #' @keywords internal
-#' @noRd
 get_bls_series_chunks <- function(series_id, chunk_list) {
   results <- list()
-  
+
   for (chunk in chunk_list) {
     chunk_result <- get_bls_chunk(series_id, chunk)
     results <- append(results, list(chunk_result))
   }
-  
+
   return(results)
 }
 
@@ -175,9 +175,8 @@ get_bls_series_chunks <- function(series_id, chunk_list) {
 #' }
 #'
 #' @importFrom dplyr bind_rows arrange
-#' @seealso [tidy_bls_single_result()], [get_bls_series_chunks()]
+#' @seealso \code{tidy_bls_single_result()}, \code{get_bls_series_chunks()}
 #' @keywords internal
-#' @noRd
 merge_bls_series_chunks <- function(result_list) {
   results <- lapply(result_list, tidy_bls_single_result)
   return(dplyr::arrange(dplyr::bind_rows(results), date))
@@ -189,7 +188,7 @@ merge_bls_series_chunks <- function(result_list) {
 #' Fetches data for a single BLS series across a multi-year range. Handles API chunking automatically
 #' by splitting large ranges into smaller segments (e.g., 20-year chunks), retrieving each piece via the
 #' BLS API, tidying the results, and combining them into a single tibble.
-#' 
+#'
 #' @details Internally uses [split_year_range()] to break the date range into chunks,
 #' [get_bls_series_chunks()] to fetch each chunk from the API, and [merge_bls_series_chunks()]
 #' to clean and combine the results.
@@ -208,7 +207,7 @@ merge_bls_series_chunks <- function(result_list) {
 #' get_bls("LNS14000000", 2000, 2023)
 #' }
 #'
-#' @seealso [split_year_range()], [get_bls_series_chunks()], [merge_bls_series_chunks()]
+#' @seealso \code{split_year_range()}, \code{get_bls_series_chunks()}, \code{merge_bls_series_chunks()}
 #' @export
 get_bls <- function(series_id,
                     start_year,

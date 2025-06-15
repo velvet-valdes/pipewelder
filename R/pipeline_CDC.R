@@ -6,23 +6,22 @@
 #' @param app_token Optional Socrata API token
 #'
 #' @return A tibble containing the batch of rows
-#' @seealso [collect_cdc_batches()]
+#' @seealso \code{collect_cdc_batches()}
 #' @keywords internal
-#' @noRd
 get_cdc_batch <- function(series_id,
                           offset = 0,
                           limit = 1000,
                           app_token = NULL) {
   endpoint <- paste0("https://data.cdc.gov/resource/", series_id, ".json")
-  
+
   res <- httr::GET(
     url = endpoint,
     query = list(`$limit` = limit, `$offset` = offset),
     httr::add_headers(`X-App-Token` = app_token)
   )
-  
+
   stopifnot(httr::status_code(res) == 200)
-  
+
   data <- jsonlite::fromJSON(httr::content(res, as = "text", encoding = "UTF-8"))
   tibble::as_tibble(data)
 }
@@ -36,9 +35,8 @@ get_cdc_batch <- function(series_id,
 #' @param verbose Print progress
 #'
 #' @return A list of tibbles (each page of results)
-#' @seealso [get_cdc_batch()], [harmonize_flag_column()]
+#' @seealso \code{get_cdc_batch()}, \code{harmonize_flag_column()}
 #' @keywords internal
-#' @noRd
 collect_cdc_batches <- function(series_id,
                                 app_token = NULL,
                                 limit = 1000,
@@ -46,7 +44,7 @@ collect_cdc_batches <- function(series_id,
   batches <- list()
   offset <- 0
   i <- 1
-  
+
   repeat {
     if (verbose)
       message("Fetching batch ", i, " (offset = ", offset, ")")
@@ -62,7 +60,7 @@ collect_cdc_batches <- function(series_id,
     offset <- offset + limit
     i <- i + 1
   }
-  
+
   batches
 }
 
@@ -75,25 +73,24 @@ collect_cdc_batches <- function(series_id,
 #' @param batches A list of tibbles returned by `collect_cdc_batches()`
 #'
 #' @return A new list of tibbles with harmonized 'flag' columns
-#' @seealso [collect_cdc_batches()], [bind_cdc_batches()]
+#' @seealso \code{collect_cdc_batches()}, \code{bind_cdc_batches()}
 #' @keywords internal
-#' @noRd
 harmonize_flag_column <- function(batches) {
   # Check if any batch contains 'flag'
   any_has_flag <- any(purrr::map_lgl(batches, ~ "flag" %in% names(.x)))
   if (!any_has_flag)
     return(batches)
-  
+
   # Get the reference column order from the first batch that contains 'flag'
   ref_batch <- purrr::detect(batches, ~ "flag" %in% names(.x))
   ref_names <- names(ref_batch)
-  
+
   purrr::map(batches, function(df) {
     # Add 'flag' if it's missing
     if (!"flag" %in% names(df)) {
       df$flag <- NA_character_
     }
-    
+
     # Reorder to match reference
     df <- df[ref_names]
     df
@@ -106,9 +103,8 @@ harmonize_flag_column <- function(batches) {
 #' @param batches A list of tibbles as returned by `collect_cdc_batches()`
 #'
 #' @return A single tibble with all rows
-#' @seealso [harmonize_flag_column()], [get_cdc()]
+#' @seealso \code{harmonize_flag_column()}, \code{get_cdc()}
 #' @keywords internal
-#' @noRd
 bind_cdc_batches <- function(batches) {
   dplyr::bind_rows(batches)
 }
@@ -134,7 +130,7 @@ bind_cdc_batches <- function(batches) {
 #'   suicide_final <- get_cdc("p7se-k3ix")
 #' }
 #'
-#' @seealso [collect_cdc_batches()], [harmonize_flag_column()], [bind_cdc_batches()]
+#' @seealso \code{collect_cdc_batches()}, \code{harmonize_flag_column()}, \code{bind_cdc_batches()}
 #' @export
 get_cdc <- function(series_id) {
   return(bind_cdc_batches(harmonize_flag_column(collect_cdc_batches(series_id))))
