@@ -110,28 +110,171 @@ bind_cdc_batches <- function(batches) {
 }
 
 
-#' Retrieve and combine CDC dataset records with schema harmonization
+#' Coerce column types for finalized CDC dataset
+#'
+#' This function standardizes the column types of a CDC dataset with the
+#' finalized structure (e.g., dataset ID 'p7se-k3ix'), ensuring proper
+#' coercion to factors, integers, numerics, and date formats. It also
+#' handles missing flags and reorders columns to prioritize `time_period`
+#' and `time_period_id` for consistency.
+#'
+#' @param df A tibble returned from the CDC API with the finalized structure.
+#' @return A tibble with coerced column types and reordered columns.
+#' @keywords internal
+clean_cdc_finalized <- function(df) {
+  df$topic             <- as.factor(df$topic)
+  df$classification    <- as.factor(df$classification)
+  df$classification_id <- as.integer(df$classification_id)
+  df$group             <- as.factor(df$group)
+  df$group_id          <- as.integer(df$group_id)
+  df$group_order       <- as.integer(df$group_order)
+  df$subgroup          <- as.factor(df$subgroup)
+  df$subgroup_id       <- as.integer(df$subgroup_id)
+  df$subgroup_order    <- as.integer(df$subgroup_order)
+  df$estimate_type     <- as.factor(df$estimate_type)
+  df$estimate_type_id  <- as.integer(df$estimate_type_id)
+  df$time_period       <- as.Date(paste0(df$time_period, "-01-01"))
+  df$time_period_id    <- as.integer(df$time_period_id)
+  df$estimate          <- as.numeric(df$estimate)
+  df$standard_error    <- as.numeric(df$standard_error)
+  df$estimate_lci      <- as.numeric(df$estimate_lci)
+  df$estimate_uci      <- as.numeric(df$estimate_uci)
+  df$footnote_id_list  <- as.factor(df$footnote_id_list)
+  df$flag <- as.factor(ifelse(is.na(df$flag), "None", df$flag))
+
+  # Move time_period and time_period_id to the front
+  if (all(c("time_period", "time_period_id") %in% names(df))) {
+    new_order <- c("time_period", "time_period_id", setdiff(names(df), c("time_period", "time_period_id")))
+    df <- df[, new_order]
+  }
+
+  return(df)
+}
+
+#' Coerce column types for historical CDC dataset
+#'
+#' This function standardizes column types for historical-format CDC datasets
+#' (e.g., dataset ID '9j2v-jamp'). It converts character fields into appropriate
+#' factor, integer, numeric, or date types. It also handles missing flags and
+#' reorders the output to place `year` and `year_num` as the first columns.
+#'
+#' @param df A tibble with the historical structure.
+#' @return A tibble with coerced types and column reordering.
+#' @keywords internal
+clean_cdc_historical <- function(df) {
+  df$indicator        <- as.factor(df$indicator)
+  df$unit             <- as.factor(df$unit)
+  df$unit_num         <- as.integer(df$unit_num)
+  df$stub_name        <- as.factor(df$stub_name)
+  df$stub_name_num    <- as.integer(df$stub_name_num)
+  df$stub_label       <- as.factor(df$stub_label)
+  df$stub_label_num   <- as.integer(df$stub_label_num)
+  df$year             <- as.Date(paste0(df$year, "-01-01"))
+  df$year_num         <- as.integer(df$year_num)
+  df$age              <- as.factor(df$age)
+  df$age_num          <- as.integer(df$age_num)
+  df$estimate         <- as.numeric(df$estimate)
+  df$flag <- as.factor(ifelse(is.na(df$flag), "None", df$flag))
+
+  # Move 'year' and 'year_num' to the first two columns
+  if (all(c("year", "year_num") %in% names(df))) {
+    new_order <- c("year", "year_num", setdiff(names(df), c("year", "year_num")))
+    df <- df[, new_order]
+  }
+
+  return(df)
+}
+
+#' Coerce column types for quarterly provisional CDC dataset
+#'
+#' This function prepares quarterly-structured CDC datasets (e.g., dataset ID '489q-934x')
+#' by converting relevant fields to factors, dates, and numerics. It parses `year_and_quarter`
+#' into separate `year` (as Date) and `quarter` (as factor) columns, and reorders them to appear first.
+#'
+#' @param df A tibble with quarterly structure.
+#' @return A tibble with coerced types and column reordering.
+#' @keywords internal
+clean_cdc_quarterly <- function(df) {
+  df$year <- as.Date(paste0(substr(df$year_and_quarter, 1, 4), "-01-01"))
+  df$quarter <- factor(substr(df$year_and_quarter, 6, 7),
+                       levels = c("Q1", "Q2", "Q3", "Q4"))
+  df$year_and_quarter <- NULL
+
+  # Convert all columns starting with "rate_" EXCEPT "rate_type" to numeric
+  rate_cols <- grep("^rate_", names(df), value = TRUE)
+  rate_cols <- setdiff(rate_cols, "rate_type")
+
+  for (col in rate_cols) {
+    df[[col]] <- suppressWarnings(as.numeric(df[[col]]))
+  }
+
+  df$cause_of_death <- as.factor(df$cause_of_death)
+  df$rate_type <- as.factor(df$rate_type)
+  df$unit <- as.factor(df$unit)
+
+  if (all(c("year", "quarter") %in% names(df))) {
+    new_order <- c("year", "quarter", setdiff(names(df), c("year", "quarter")))
+    df <- df[, new_order]
+  }
+
+  return(df)
+}
+
+#' Detect the CDC dataset structure based on column names hash
+#'
+#' Given a tibble (typically returned from `bind_cdc_batches()`), this function generates
+#' an MD5 hash of the column names and uses it to determine which data cleaning function
+#' should be applied.
+#'
+#' @param df A tibble returned from CDC data batching.
+#' @return A string indicating which cleaning function to apply, or `NULL` if no match is found.
+#' @keywords internal
+detect_cdc_structure <- function(df) {
+  hash <- digest::digest(paste(names(df)), algo = "md5")
+
+  switch(
+    hash,
+    "4c9cd083d29433984eb29d9451bada25" = "clean_cdc_finalized",
+    "fcec76284a2e1e8701ceb4eabbf94827" = "clean_cdc_historical",
+    "e0397317d335549d8244da964f07e598" = "clean_cdc_quarterly",
+    NULL
+  )
+}
+
+
+#' Retrieve and optionally clean CDC dataset records with schema harmonization
 #'
 #' Downloads all records from a CDC Socrata dataset using paginated API calls,
 #' harmonizes the presence of the `flag` column across batches (if applicable),
-#' and returns a single tibble.
+#' and returns a single tibble. If the dataset structure is recognized, an
+#' appropriate cleaning function is applied to coerce data types and re-order columns.
 #'
 #' This function wraps the three-step process of:
 #' 1. Collecting paginated data chunks
 #' 2. Ensuring consistent schema (with respect to the `flag` column)
 #' 3. Binding all records into a single tibble
 #'
+#' If the dataset's column structure is not recognized, the raw tibble is returned
+#' without coercion or reordering.
+#'
 #' @param series_id A Socrata dataset ID string (e.g., "489q-934x")
 #'
-#' @return A tibble containing all records from the dataset with consistent columns
+#' @return A tibble containing all records from the dataset. If recognized, the tibble
+#'         is cleaned and coerced to appropriate types; otherwise, it is returned unmodified.
+#'
 #' @examples
 #' \dontrun{
 #'   suicide_qtr <- get_cdc("489q-934x")
 #'   suicide_final <- get_cdc("p7se-k3ix")
 #' }
 #'
-#' @seealso \code{collect_cdc_batches()}, \code{harmonize_flag_column()}, \code{bind_cdc_batches()}
+#' @seealso \code{collect_cdc_batches()}, \code{harmonize_flag_column()}, \code{bind_cdc_batches()}, \code{detect_cdc_structure()}
 #' @export
 get_cdc <- function(series_id) {
-  return(bind_cdc_batches(harmonize_flag_column(collect_cdc_batches(series_id))))
+  tmp <- bind_cdc_batches(harmonize_flag_column(collect_cdc_batches(series_id)))
+  cleaner <- detect_cdc_structure(tmp)
+  if (!is.null(cleaner)) {
+    tmp <- do.call(cleaner, list(tmp))
+    return(tmp)
+  }
 }
