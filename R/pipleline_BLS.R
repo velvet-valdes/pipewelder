@@ -294,7 +294,6 @@ construct_bls <- function(sheet,
         } else {
           data <- get_bls(series_id, start_year, end_year)
           saveRDS(data, cache_file)
-          Sys.sleep(3)  # Delay to avoid hitting rate limits
           data
         }
       }, error = function(e) {
@@ -311,9 +310,10 @@ construct_bls <- function(sheet,
         attr(result, "description") <- description
         results[[var_name]] <- result
       }
-
+      Sys.sleep(3)  # Delay to avoid hitting rate limits
     }
   }
 
   return(results)
 }
+
