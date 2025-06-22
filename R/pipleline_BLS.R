@@ -109,7 +109,6 @@ get_bls_chunk <- function(series_id, chunk) {
 #' @seealso \code{merge_bls_series_chunks()}
 #' @keywords internal
 tidy_bls_single_result <- function(res) {
-  series_df <- res[["Results"]][["series"]]
   data_df <- series_df$data[[1]]
 
   cleaned_df <- dplyr::mutate(
@@ -118,7 +117,6 @@ tidy_bls_single_result <- function(res) {
     value = as.numeric(value),
     month = as.integer(stringr::str_remove(period, "M")),
     date = as.Date(sprintf("%d-%02d-01", year, month)),
-    seriesID = series_df$seriesID
   )
 
   cleaned_df <- dplyr::select(cleaned_df, date, year, month, value, seriesID)
@@ -215,4 +213,107 @@ get_bls <- function(series_id,
   chunk_list <- split_year_range(start_year, end_year)
   result_list <- get_bls_series_chunks(series_id, chunk_list)
   return(merge_bls_series_chunks(result_list))
+}
+
+
+#' Construct BLS Data
+#'
+#' Iterates over all tabs in a Google Sheet with names matching the pattern
+#' `"BLS-"`, retrieves BLS series for each ID listed, and returns a named list
+#' of tibbles. Results are cached by series ID and date range to avoid redundant
+#' API calls.
+#'
+#' @param sheet A list of tibbles (typically returned by `get_full_gsheet()`),
+#'   with one or more elements named like `"BLS-XXX"`, each containing a `Series
+#'   ID` column and optionally a `Description` column.
+#' @param start_year The starting year of the time series (default is 2000).
+#' @param end_year The ending year of the time series (default is the current
+#'   year).
+#' @param flush Logical. If `TRUE`, clears the existing cache for the relevant
+#'   BLS series before downloading new data.
+#'
+#' @return A named list of tibbles, one for each BLS series. Each tibble
+#'   includes an attribute `"description"` from the sheet if present.
+#'
+#' @details Cached files are stored in a `pipewelder_cache/` folder in the
+#' working directory. File names are hashed using the series ID, start year, and
+#' end year to uniquely identify each request.
+#'
+#' @export
+construct_bls <- function(sheet,
+                          start_year = 2000,
+                          end_year = as.integer(format(Sys.Date(), "%Y")),
+                          flush = FALSE) {
+  # Filter only BLS-related tabs
+  bls_keys <- grep("^BLS-", names(sheet), value = TRUE)
+
+  # Ensure cache directory exists
+  cache_dir <- file.path(getwd(), "pipewelder_cache")
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir)
+  }
+
+  # Initialize result list
+  results <- list()
+
+  # Iterate over each BLS tab
+  for (key in bls_keys) {
+    tab <- sheet[[key]]
+
+    # Sanity check: skip if no Series ID column
+    if (!"Series ID" %in% names(tab))
+      next
+
+    for (i in seq_len(nrow(tab))) {
+      series_id <- tab[["Series ID"]][i]
+      description <- tab$Description[i]
+
+      if (is.na(series_id) || series_id == "")
+        next
+
+      var_name <- paste0(gsub("-", "_", key), "_", series_id)
+
+      # Generate cache key and path
+      cache_key_input <- paste(series_id, start_year, end_year, sep = "_")
+      cache_key <- digest::digest(cache_key_input, algo = "md5")
+      cache_file <- file.path(cache_dir, paste0("bls_", cache_key, ".rds"))
+
+      message(sprintf("Retrieving BLS series: %s", series_id))
+
+      # Delete existing cache if flush is requested
+      if (flush && file.exists(cache_file)) {
+        file.remove(cache_file)
+        message("↪ Flushed existing cache.")
+      }
+
+      # Load from cache or fetch fresh data
+      result <- tryCatch({
+        if (file.exists(cache_file)) {
+          message("↪ Using cached series. Pass 'flush = TRUE' to override.")
+          readRDS(cache_file)
+        } else {
+          data <- get_bls(series_id, start_year, end_year)
+          saveRDS(data, cache_file)
+          Sys.sleep(3)  # Delay to avoid hitting rate limits
+          data
+        }
+      }, error = function(e) {
+        warning(sprintf(
+          "Failed to retrieve BLS series '%s': %s",
+          series_id,
+          e$message
+        ))
+        NULL
+      })
+
+      # Attach description if retrieval succeeded
+      if (!is.null(result)) {
+        attr(result, "description") <- description
+        results[[var_name]] <- result
+      }
+
+    }
+  }
+
+  return(results)
 }

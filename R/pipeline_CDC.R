@@ -187,9 +187,10 @@ clean_cdc_historical <- function(df) {
 
 #' Coerce column types for quarterly provisional CDC dataset
 #'
-#' This function prepares quarterly-structured CDC datasets (e.g., dataset ID '489q-934x')
-#' by converting relevant fields to factors, dates, and numerics. It parses `year_and_quarter`
-#' into separate `year` (as Date) and `quarter` (as factor) columns, and reorders them to appear first.
+#' This function prepares quarterly-structured CDC datasets (e.g., dataset ID
+#' '489q-934x') by converting relevant fields to factors, dates, and numerics.
+#' It parses `year_and_quarter` into separate `year` (as Date) and `quarter` (as
+#' factor) columns, and reorders them to appear first.
 #'
 #' @param df A tibble with quarterly structure.
 #' @return A tibble with coerced types and column reordering.
@@ -222,12 +223,13 @@ clean_cdc_quarterly <- function(df) {
 
 #' Detect the CDC dataset structure based on column names hash
 #'
-#' Given a tibble (typically returned from `bind_cdc_batches()`), this function generates
-#' an MD5 hash of the column names and uses it to determine which data cleaning function
-#' should be applied.
+#' Given a tibble (typically returned from `bind_cdc_batches()`), this function
+#' generates an MD5 hash of the column names and uses it to determine which data
+#' cleaning function should be applied.
 #'
 #' @param df A tibble returned from CDC data batching.
-#' @return A string indicating which cleaning function to apply, or `NULL` if no match is found.
+#' @return A string indicating which cleaning function to apply, or `NULL` if no
+#'   match is found.
 #' @keywords internal
 detect_cdc_structure <- function(df) {
   hash <- digest::digest(paste(names(df)), algo = "md5")
@@ -247,20 +249,21 @@ detect_cdc_structure <- function(df) {
 #' Downloads all records from a CDC Socrata dataset using paginated API calls,
 #' harmonizes the presence of the `flag` column across batches (if applicable),
 #' and returns a single tibble. If the dataset structure is recognized, an
-#' appropriate cleaning function is applied to coerce data types and re-order columns.
+#' appropriate cleaning function is applied to coerce data types and re-order
+#' columns.
 #'
-#' This function wraps the three-step process of:
-#' 1. Collecting paginated data chunks
-#' 2. Ensuring consistent schema (with respect to the `flag` column)
-#' 3. Binding all records into a single tibble
+#' This function wraps the three-step process of: 1. Collecting paginated data
+#' chunks 2. Ensuring consistent schema (with respect to the `flag` column) 3.
+#' Binding all records into a single tibble
 #'
-#' If the dataset's column structure is not recognized, the raw tibble is returned
-#' without coercion or reordering.
+#' If the dataset's column structure is not recognized, the raw tibble is
+#' returned without coercion or reordering.
 #'
 #' @param series_id A Socrata dataset ID string (e.g., "489q-934x")
 #'
-#' @return A tibble containing all records from the dataset. If recognized, the tibble
-#'         is cleaned and coerced to appropriate types; otherwise, it is returned unmodified.
+#' @return A tibble containing all records from the dataset. If recognized, the
+#'   tibble is cleaned and coerced to appropriate types; otherwise, it is
+#'   returned unmodified.
 #'
 #' @examples
 #' \dontrun{
@@ -268,7 +271,8 @@ detect_cdc_structure <- function(df) {
 #'   suicide_final <- get_cdc("p7se-k3ix")
 #' }
 #'
-#' @seealso \code{collect_cdc_batches()}, \code{harmonize_flag_column()}, \code{bind_cdc_batches()}, \code{detect_cdc_structure()}
+#' @seealso \code{collect_cdc_batches()}, \code{harmonize_flag_column()},
+#'   \code{bind_cdc_batches()}, \code{detect_cdc_structure()}
 #' @export
 get_cdc <- function(series_id) {
   tmp <- bind_cdc_batches(harmonize_flag_column(collect_cdc_batches(series_id)))
@@ -277,4 +281,79 @@ get_cdc <- function(series_id) {
     tmp <- do.call(cleaner, list(tmp))
     return(tmp)
   }
+}
+
+
+#' Construct CDC Data
+#'
+#' Iterates over the CDC tab and retrieves all listed datasets using
+#' \code{get_cdc()}. Each result is stored in a named list, with a description
+#' attribute attached for later reference.
+#'
+#' @param sheet A named list from \code{get_full_gsheet()}, containing a "CDC"
+#'   element. This tab must include at least two columns: "Series ID" and
+#'   "Description".
+#'
+#' @return A named list of tibbles retrieved from CDC's Socrata endpoints. Each
+#'   tibble will have a "description" attribute containing its metadata label.
+#' @export
+construct_cdc <- function(sheet, flush = FALSE) {
+  if (!"CDC" %in% names(sheet)) {
+    stop("Input must contain a 'CDC' tab with Series IDs.")
+  }
+
+  cdc_tab <- sheet$CDC
+  series_ids <- cdc_tab[["Series ID"]]
+
+  # Ensure cache directory exists
+  cache_dir <- file.path(getwd(), "pipewelder_cache")
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir)
+  }
+
+  results <- list()
+
+  for (i in seq_along(series_ids)) {
+    series_id <- series_ids[i]
+    description <- cdc_tab$Description[i]
+
+    # Generate MD5 hash for cache key
+    cache_key_input <- paste(series_id, Sys.Date(), sep = "_")
+    cache_key <- digest::digest(cache_key_input, algo = "md5")
+    cache_file <- file.path(cache_dir, paste0("cdc_", cache_key, ".rds"))
+
+    message(sprintf("Retrieving CDC dataset: %s", series_id))
+
+    # Delete cache if flushing is requested
+    if (flush && file.exists(cache_file)) {
+      file.remove(cache_file)
+      message("↪ Flushed existing cache.")
+    }
+
+    # Load from cache or fetch if needed
+    result <- tryCatch({
+      if (file.exists(cache_file)) {
+        message("↪ Using cached series. Pass 'flush = TRUE' to overide")
+        readRDS(cache_file)
+      } else {
+        data <- get_cdc(series_id)
+        saveRDS(data, cache_file)
+        data
+      }
+    }, error = function(e) {
+      warning(sprintf(
+        "Failed to retrieve CDC series '%s': %s",
+        series_id,
+        e$message
+      ))
+      NULL
+    })
+
+    if (!is.null(result)) {
+      attr(result, "description") <- description
+      results[[paste0("CDC_", series_id)]] <- result
+    }
+  }
+
+  return(results)
 }

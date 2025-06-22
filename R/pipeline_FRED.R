@@ -1,6 +1,3 @@
-# FRED data pipeline functions
-
-
 #' Sanitize a Date Input for FRED Queries
 #'
 #' Normalizes date input to `"YYYY-MM-DD"` format, allowing flexible entry formats
@@ -174,4 +171,96 @@ tidy_fred_series <- function(fred_result) {
 #' @export
 get_fred <- function(series_id, start_date, end_date = Sys.Date()) {
   return(tidy_fred_series(get_fred_series_raw(series_id, start_date, end_date)))
+}
+
+
+#' Retrieve and Construct FRED Series Data
+#'
+#' Iterates over a list of FRED series IDs from a tab named `"FRED"` in a
+#' `sheet` list, retrieving each series using [`get_fred()`] and returning a
+#' named list of tibbles. Each tibble includes `date` and `value` columns, and
+#' is annotated with a `"description"` attribute.
+#'
+#' @param sheet A named list that includes an element `"FRED"`: a tibble
+#'   containing at minimum a `"Series ID"` column (character vector of FRED
+#'   series IDs), and optionally a `"Description"` column for metadata.
+#' @param start_date Start date for FRED data, in `"YYYY"`, `"YYYY-MM"`,
+#'   `"YYYY-MM-DD"` format, or as a `Date` object. Defaults to `"1950-01-01"`.
+#' @param end_date Optional end date for FRED data. Same format as `start_date`.
+#'   Defaults to today's date.
+#'
+#' @return A named list of tibbles, each corresponding to a FRED series. Each
+#'   tibble has columns `date` and `value`, and includes a `"description"`
+#'   attribute.
+#'
+#' @examples
+#' \dontrun{
+#'   # Assuming `sheet` is a list with a "FRED" tibble:
+#'   fred_data <- construct_fred(sheet, start_date = "2000-01-01")
+#'   attr(fred_data$FRED_UNRATE, "description")
+#' }
+#'
+#' @export
+construct_fred <- function(sheet,
+                           start_date = "1950-01-01",
+                           end_date = Sys.Date(),
+                           flush = FALSE) {
+  if (!"FRED" %in% names(sheet)) {
+    stop("Input must contain a 'FRED' tab with Series IDs.")
+  }
+
+  fred_tab <- sheet$FRED
+  series_ids <- fred_tab[["Series ID"]]
+
+  # Ensure cache directory exists
+  cache_dir <- file.path(getwd(), "pipewelder_cache")
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir)
+  }
+
+  results <- list()
+
+  for (i in seq_along(series_ids)) {
+    series_id <- series_ids[i]
+    description <- fred_tab$Description[i]
+
+    # Create a unique cache key using series ID, start date, and end date
+    cache_key_input <- paste(series_id, start_date, end_date, sep = "_")
+    cache_key <- digest::digest(cache_key_input, algo = "md5")
+    cache_file <- file.path(cache_dir, paste0("fred_", cache_key, ".rds"))
+
+    message(sprintf("Retrieving FRED series: %s", series_id))
+
+    # Delete cache if flushing is requested
+    if (flush && file.exists(cache_file)) {
+      file.remove(cache_file)
+      message("↪ Flushed existing cache.")
+    }
+
+    # Load from cache or fetch if needed
+    result <- tryCatch({
+      if (file.exists(cache_file)) {
+        message("↪ Using cached series. Pass 'flush = TRUE' to overide")
+        readRDS(cache_file)
+      } else {
+        data <- get_fred(series_id, start_date, end_date)
+        saveRDS(data, cache_file)
+        data
+      }
+    }, error = function(e) {
+      warning(sprintf(
+        "Failed to retrieve FRED series '%s': %s",
+        series_id,
+        e$message
+      ))
+      NULL
+    })
+
+    if (!is.null(result)) {
+      attr(result, "description") <- description
+      results[[paste0("FRED_", series_id)]] <- result
+    }
+  }
+
+  return(results)
 }
