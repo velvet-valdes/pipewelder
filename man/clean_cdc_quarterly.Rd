@@ -13,8 +13,9 @@ clean_cdc_quarterly(df)
 A tibble with coerced types and column reordering.
 }
 \description{
-This function prepares quarterly-structured CDC datasets (e.g., dataset ID '489q-934x')
-by converting relevant fields to factors, dates, and numerics. It parses \code{year_and_quarter}
-into separate \code{year} (as Date) and \code{quarter} (as factor) columns, and reorders them to appear first.
+This function prepares quarterly-structured CDC datasets (e.g., dataset ID
+'489q-934x') by converting relevant fields to factors, dates, and numerics.
+It parses \code{year_and_quarter} into separate \code{year} (as Date) and \code{quarter} (as
+factor) columns, and reorders them to appear first.
 }
 \keyword{internal}

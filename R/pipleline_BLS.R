@@ -283,13 +283,13 @@ construct_bls <- function(sheet,
       # Delete existing cache if flush is requested
       if (flush && file.exists(cache_file)) {
         file.remove(cache_file)
-        message("↪ Flushed existing cache.")
+        message(" Flushed existing cache.")
       }
 
       # Load from cache or fetch fresh data
       result <- tryCatch({
         if (file.exists(cache_file)) {
-          message("↪ Using cached series. Pass 'flush = TRUE' to override.")
+          message(" Using cached series. Pass 'flush = TRUE' to override.")
           readRDS(cache_file)
         } else {
           data <- get_bls(series_id, start_year, end_year)

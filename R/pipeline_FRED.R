@@ -188,6 +188,8 @@ get_fred <- function(series_id, start_date, end_date = Sys.Date()) {
 #'   `"YYYY-MM-DD"` format, or as a `Date` object. Defaults to `"1950-01-01"`.
 #' @param end_date Optional end date for FRED data. Same format as `start_date`.
 #'   Defaults to today's date.
+#' @param flush Logical. If TRUE, clears any existing cached data before making
+#'   new API requests. Default is FALSE.
 #'
 #' @return A named list of tibbles, each corresponding to a FRED series. Each
 #'   tibble has columns `date` and `value`, and includes a `"description"`
@@ -234,13 +236,13 @@ construct_fred <- function(sheet,
     # Delete cache if flushing is requested
     if (flush && file.exists(cache_file)) {
       file.remove(cache_file)
-      message("↪ Flushed existing cache.")
+      message(" Flushed existing cache.")
     }
 
     # Load from cache or fetch if needed
     result <- tryCatch({
       if (file.exists(cache_file)) {
-        message("↪ Using cached series. Pass 'flush = TRUE' to overide")
+        message(" Using cached series. Pass 'flush = TRUE' to overide")
         readRDS(cache_file)
       } else {
         data <- get_fred(series_id, start_date, end_date)

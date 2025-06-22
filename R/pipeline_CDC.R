@@ -293,6 +293,8 @@ get_cdc <- function(series_id) {
 #' @param sheet A named list from \code{get_full_gsheet()}, containing a "CDC"
 #'   element. This tab must include at least two columns: "Series ID" and
 #'   "Description".
+#' @param flush Logical. If TRUE, clears any existing cached data before making
+#'   new API requests. Default is FALSE.
 #'
 #' @return A named list of tibbles retrieved from CDC's Socrata endpoints. Each
 #'   tibble will have a "description" attribute containing its metadata label.
@@ -327,13 +329,13 @@ construct_cdc <- function(sheet, flush = FALSE) {
     # Delete cache if flushing is requested
     if (flush && file.exists(cache_file)) {
       file.remove(cache_file)
-      message("↪ Flushed existing cache.")
+      message(" Flushed existing cache.")
     }
 
     # Load from cache or fetch if needed
     result <- tryCatch({
       if (file.exists(cache_file)) {
-        message("↪ Using cached series. Pass 'flush = TRUE' to overide")
+        message(" Using cached series. Pass 'flush = TRUE' to overide")
         readRDS(cache_file)
       } else {
         data <- get_cdc(series_id)

@@ -10,11 +10,12 @@ detect_cdc_structure(df)
 \item{df}{A tibble returned from CDC data batching.}
 }
 \value{
-A string indicating which cleaning function to apply, or \code{NULL} if no match is found.
+A string indicating which cleaning function to apply, or \code{NULL} if no
+match is found.
 }
 \description{
-Given a tibble (typically returned from \code{bind_cdc_batches()}), this function generates
-an MD5 hash of the column names and uses it to determine which data cleaning function
-should be applied.
+Given a tibble (typically returned from \code{bind_cdc_batches()}), this function
+generates an MD5 hash of the column names and uses it to determine which data
+cleaning function should be applied.
 }
 \keyword{internal}

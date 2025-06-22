@@ -10,25 +10,24 @@ get_cdc(series_id)
 \item{series_id}{A Socrata dataset ID string (e.g., "489q-934x")}
 }
 \value{
-A tibble containing all records from the dataset. If recognized, the tibble
-is cleaned and coerced to appropriate types; otherwise, it is returned unmodified.
+A tibble containing all records from the dataset. If recognized, the
+tibble is cleaned and coerced to appropriate types; otherwise, it is
+returned unmodified.
 }
 \description{
 Downloads all records from a CDC Socrata dataset using paginated API calls,
 harmonizes the presence of the \code{flag} column across batches (if applicable),
 and returns a single tibble. If the dataset structure is recognized, an
-appropriate cleaning function is applied to coerce data types and re-order columns.
+appropriate cleaning function is applied to coerce data types and re-order
+columns.
 }
 \details{
-This function wraps the three-step process of:
-\enumerate{
-\item Collecting paginated data chunks
-\item Ensuring consistent schema (with respect to the \code{flag} column)
-\item Binding all records into a single tibble
-}
+This function wraps the three-step process of: 1. Collecting paginated data
+chunks 2. Ensuring consistent schema (with respect to the \code{flag} column) 3.
+Binding all records into a single tibble
 
-If the dataset's column structure is not recognized, the raw tibble is returned
-without coercion or reordering.
+If the dataset's column structure is not recognized, the raw tibble is
+returned without coercion or reordering.
 }
 \examples{
 \dontrun{
@@ -38,5 +37,6 @@ without coercion or reordering.
 
 }
 \seealso{
-\code{collect_cdc_batches()}, \code{harmonize_flag_column()}, \code{bind_cdc_batches()}, \code{detect_cdc_structure()}
+\code{collect_cdc_batches()}, \code{harmonize_flag_column()},
+\code{bind_cdc_batches()}, \code{detect_cdc_structure()}
 }
