@@ -21,46 +21,75 @@ knitr::opts_chunk$set(
 - **Federal Reserve Economic Data (FRED)**
 - **Centers for Disease Control and Prevention (CDC)**
 
-It consolidates API interactions into consistent, high-level pipeline functions:
+It provides two layers of functionality:
 
-- `get_bls()` for labor force data
-- `get_fred()` for market and macroeconomic indicators
-- `get_cdc()` for mortality and health surveillance data
+- The `get_*()` functions retrieve data for a single series ID from each respective source.
+- The `construct_*()` functions operate on a named list of series metadata tibbles (such as those returned by `get_full_gsheet()`), iterating over each entry to retrieve and clean data for multiple series at once.
+
+The output is a named list of tibbles, where each tibble represents a cleaned time series. Instead of inserting the series ID as a column, each tibble is tagged using `attr(x, "series_id")` to preserve the series identifier without modifying the data structure.
+
+Functions included:
+
+- `get_bls()` retrieves BLS labor force data
+- `get_fred()` retrieves FRED macroeconomic indicators
+- `get_cdc()` retrieves CDC mortality and health surveillance data
+- `construct_bls()` builds cleaned BLS data from a list of series metadata
+- `construct_fred()` builds cleaned FRED data from a list of series metadata
+- `construct_cdc()` builds cleaned CDC data from a list of metadata tabs, auto-detecting schema structure
+
+Every `construct_*()` function has a caching mechanism which caches the retrieved data to `~\pipewelder-cache`.  The cache can be flushed with the `flush = TRUE` parameter but should retrieve fresh data once each calendar day.  All `construct_*()` functions also include default date parameters, which differ by source. Be sure to review the documentation to understand the behavior for each.
 
 ## Installation
 
-You can install the development version of pipewelder from [GitHub](https://github.com/velvetvaldes/pipewelder) with:
+You can install `pipewelder` from [GitHub](https://github.com/velvet-valdes/pipewelder) with:
 
-```r
-# install.packages("pak")
-pak::pak("velvetvaldes/pipewelder")
+```{r installation-example, eval= FALSE}
+install.packages("pak") # Install 'pak' if not present
+pak::pak("velvet-valdes/pipewelder")
 ```
 
 ## Examples
 
-### Retrieve labor force data from BLS
+### Retrieve a Google sheet to use as a input for the `construct_*()` functions:
+
+```{r  gsheet-example, eval = FALSE}
+url <- "https://docs.google.com/spreadsheets/d/your-sheet-id/edit#gid=0"
+sheet <- get_full_gsheet(url)
+```
+
+### Retrieve series data from BLS:
 
 ```{r bls-example, eval = FALSE}
 # Set your API key
 Sys.setenv(BLS_KEY = "your_api_key")
 
-# Retrieve unemployment data from 2000 to 2023
-bls_df <- pipewelder::get_bls("LNS14000000", 2000, 2023)
-head(bls_df)
+# Retrieve a single series of BLS data from 2000 to 2023
+bls_df <- get_bls("LNS14000000", 2000, 2023)
+
+# Construct a list of tibbles using a Google Sheet as input
+BLS <- construct_bls(sheet)
 ```
 
-### Retrieve market data from FRED
-
+### Retrieve series data from FRED
 ```{r fred-example, eval = FALSE}
-fred_df <- pipewelder::get_fred("VIXCLS", "1990-01-01")
-head(fred_df)
+# Set your API key
+Sys.setenv(FRED_KEY = "your_api_key")
+
+# Retrieve a single series of FRED data from 1990 to the present
+fred_df <- get_fred("VIXCLS", "1990-01-01")
+
+# Construct a list of tibbles using a Google Sheet as input
+FRED <- construct_fred(sheet)
 ```
 
-### Retrieve health surveillance data from CDC
+### Retrieve series data from CDC
 
 ```{r cdc-example, eval = FALSE}
-cdc_df <- pipewelder::get_cdc()
-head(cdc_df)
+# Retrieve a single series of CDC data with date defaults
+cdc_df <- get_cdc("9j2v-jamp")
+
+# Construct a list of tibbles using a Google Sheet as input
+CDC <- construct_cdc(sheet)
 ```
 
 ---
