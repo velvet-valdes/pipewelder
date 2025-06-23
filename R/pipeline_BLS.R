@@ -109,6 +109,8 @@ get_bls_chunk <- function(series_id, chunk) {
 #' @seealso \code{merge_bls_series_chunks()}
 #' @keywords internal
 tidy_bls_single_result <- function(res) {
+
+  series_df <- res[["Results"]][["series"]]
   data_df <- series_df$data[[1]]
 
   cleaned_df <- dplyr::mutate(
@@ -119,7 +121,7 @@ tidy_bls_single_result <- function(res) {
     date = as.Date(sprintf("%d-%02d-01", year, month)),
   )
 
-  cleaned_df <- dplyr::select(cleaned_df, date, year, month, value, seriesID)
+  cleaned_df <- dplyr::select(cleaned_df, date, year, month, value)
   return(tibble::as_tibble(cleaned_df))
 }
 
@@ -294,6 +296,7 @@ construct_bls <- function(sheet,
         } else {
           data <- get_bls(series_id, start_year, end_year)
           saveRDS(data, cache_file)
+          Sys.sleep(3)  # Delay to avoid hitting rate limits
           data
         }
       }, error = function(e) {
@@ -310,7 +313,7 @@ construct_bls <- function(sheet,
         attr(result, "description") <- description
         results[[var_name]] <- result
       }
-      Sys.sleep(3)  # Delay to avoid hitting rate limits
+
     }
   }
 
