@@ -92,6 +92,10 @@ cdc_df <- get_cdc("9j2v-jamp")
 CDC <- construct_cdc(sheet)
 ```
 
+## License
+
+This project is licensed under the PolyForm Noncommercial License 1.0.0. Commercial use is not permitted without separate permission from Leg3 Inc. See `LICENSE` for details.
+
 ---
 
 Generated from `README.Rmd` using `devtools::build_readme()`.

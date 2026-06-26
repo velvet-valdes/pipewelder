@@ -1,9 +1,9 @@
 Package: pipewelder
-Title: What the Package Does (One Line, Title Case)
+Title: Public Data Retrieval Pipelines for R
 Version: 0.1.4
 Authors@R: 
     person("Temistocles", "Valdes", , "valdestr@leg3.net", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Description: Provides helper functions for retrieving and standardizing public data from sources such as BLS, FRED, and CDC. The package supports reproducible analytical workflows by wrapping source-specific API and parsing logic in reusable R functions.
 License: file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
