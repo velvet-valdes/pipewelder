@@ -41,11 +41,11 @@ Every `construct_*()` function has a caching mechanism which caches the retrieve
 
 ## Installation
 
-You can install `pipewelder` from [GitHub](https://github.com/velvet-valdes/pipewelder) with:
+You can install `pipewelder` from [GitHub](https://github.com/leg3/pipewelder) with:
 
 ```{r installation-example, eval= FALSE}
 install.packages("pak") # Install 'pak' if not present
-pak::pak("velvet-valdes/pipewelder")
+pak::pak("leg3/pipewelder")
 ```
 
 ## Examples
