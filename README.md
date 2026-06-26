@@ -46,11 +46,11 @@ to understand the behavior for each.
 ## Installation
 
 You can install `pipewelder` from
-[GitHub](https://github.com/velvet-valdes/pipewelder) with:
+[GitHub](https://github.com/leg3/pipewelder) with:
 
 ``` r
 install.packages("pak") # Install 'pak' if not present
-pak::pak("velvet-valdes/pipewelder")
+pak::pak("leg3/pipewelder")
 ```
 
 ## Examples
